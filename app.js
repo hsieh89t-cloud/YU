@@ -1,8 +1,9 @@
-
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>document.querySelectorAll(s);
 const LS_ENTRY = 'entry_csv_url';
-const entryCsv = localStorage.getItem(LS_ENTRY) || 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQYpmaztvrq3vdo8VeDhyP1yUYtEWjHeZyN9cN-0rg2PvqjdLfLnCQffKWUhja6aXo3OXcSmNoffPxR/pub?gid=0&single=true&output=csv';
+const entryCsv = localStorage.getItem(LS_ENTRY);
+const LSC_PREFIX = 'readonly_cache_'; // localStorage cache prefix
+
 let routes = {};
 let cache = {};
 let currentTab = 'library';
@@ -16,7 +17,8 @@ window.addEventListener('load', async () => {
   bindUI();
   try {
     await loadRoutes();
-    await switchTab('library');
+    fastRenderFromLS();
+    refreshCurrent('library'); // 抓最新覆蓋
   } catch (e) {
     renderError('入口表讀取失敗，請檢查總入口.csv 是否公開。');
     console.error(e);
@@ -40,7 +42,33 @@ async function loadRoutes(){
   ['library','work','board'].forEach(k=>{ if(!routes[k]) routes[k]=''; });
 }
 
-async function switchTab(tab){
+function fastRenderFromLS(){
+  ['library','work','board'].forEach(tab=>{
+    try {
+      const raw = localStorage.getItem(LSC_PREFIX+tab);
+      cache[tab] = raw ? JSON.parse(raw) : null;
+    } catch(_) { cache[tab]=null; }
+  });
+  switchTab('library', true);
+}
+
+async function refreshCurrent(tab){
+  await switchTab(tab);
+  ['library','work','board'].forEach(t=>{ if(t!==tab) refreshTab(t); });
+}
+
+async function refreshTab(tab){
+  if(!['library','work','board'].includes(tab)) return;
+  try {
+    const rows = await fetchCsv((routes[tab]||'') + bust());
+    const items = rows.map((r,i)=> normalizeRow(r,i)).filter(x=> (x.標題||x.內容));
+    cache[tab] = items;
+    localStorage.setItem(LSC_PREFIX+tab, JSON.stringify(items));
+    if(tab===currentTab) renderList();
+  } catch(e){ console.warn('refreshTab fail', tab, e); }
+}
+
+async function switchTab(tab, fast=false){
   if(!['library','work','board'].includes(tab)) return;
   scrollPos[currentTab] = window.scrollY || 0;
   currentTab = tab;
@@ -49,22 +77,12 @@ async function switchTab(tab){
   $('#list').classList.remove('hidden');
 
   if(!cache[tab]) {
-    try {
-      cache[tab] = await loadItems(tab);
-    } catch(e) {
-      cache[tab] = [];
-      console.error(e);
-    }
+    if(fast) renderSkeleton();
+    await refreshTab(tab);
+  } else {
+    renderList();
   }
-  renderList();
   setTimeout(()=> window.scrollTo(0, scrollPos[tab]||0), 0);
-}
-
-async function loadItems(tab){
-  const url = routes[tab];
-  if(!url) return [];
-  const rows = await fetchCsv(url + bust());
-  return rows.map((r,i)=> normalizeRow(r,i)).filter(x=> (x.標題||x.內容));
 }
 
 function normalizeRow(r, i){
@@ -88,6 +106,16 @@ function normalizeRow(r, i){
 
 function renderError(msg){
   $('#list').innerHTML = `<div class="item"><div class="meta">🚫 ${msg}</div></div>`;
+}
+
+function renderSkeleton(){
+  const listEl = $('#list');
+  listEl.innerHTML = '';
+  for(let i=0;i<6;i++) {
+    const d = document.createElement('div');
+    d.className = 'skel card';
+    listEl.appendChild(d);
+  }
 }
 
 function renderList(){
@@ -116,7 +144,7 @@ function renderList(){
     div.innerHTML = `
       <h3>${escapeHtml(it.標題||'(無標題)')}</h3>
       <div class="meta">${escapeHtml(it.日期||'')}${it.分類? ' · '+escapeHtml(it.分類):''}</div>
-      <div class="preview">${escapeHtml((it.內容||'').slice(0, 120))}{(it.內容||'').length>120?'…':''}</div>
+      <div class="preview">${escapeHtml((it.內容||'').slice(0, 120))}${(it.內容||'').length>120?'…':''}</div>
     `;
     div.addEventListener('click', ()=> openReader(it));
     listEl.appendChild(div);
@@ -127,11 +155,13 @@ function openReader(it){
   const listEl = $('#list'); const reader = $('#reader');
   listEl.classList.add('hidden');
   reader.classList.remove('hidden');
+  const safe = escapeHtml(it.內容||'').replace(/\n/g,'<br>');
   reader.innerHTML = `
     <div class="backbar"><button class="btn secondary" id="backBtn">返回列表</button></div>
     <h1>${escapeHtml(it.標題||'(無標題)')}</h1>
     <div class="meta">${escapeHtml(it.日期||'')}${it.分類? ' · '+escapeHtml(it.分類):''}</div>
-    <div class="content">${escapeHtml(it.內容||'').replace(/\n/g,'<br>')}</div>
+    <hr/>
+    <div class="content">${safe}</div>
   `;
   $('#backBtn').addEventListener('click', ()=> {
     reader.classList.add('hidden');
@@ -141,7 +171,7 @@ function openReader(it){
 }
 
 async function fetchCsv(url){
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: 'no-store' });
   if(!res.ok) throw new Error('CSV 無法讀取：'+res.status);
   const txt = await res.text();
   const lines = txt.replace(/\r/g,'').split('\n');
@@ -153,35 +183,31 @@ async function fetchCsv(url){
     const cells = splitCsvLine(line);
     const obj={};
     headers.forEach((h,i)=> obj[h]=cells[i]||'');
-    rows.append = null
     rows.push(obj);
   }
   return rows;
 }
 
 function splitCsvLine(line){
-  const re = /(\"[^\"]*(?:\"\"[^\"]*)\"|[^,]*)(?:,|$)/g;
   const out = [];
-  let m;
-  let i = 0;
-  // Fallback simpler parser if regex breaks
-  const parts = [];
-  let cur = ''; let inq = false;
-  for(let ch of line){
-    if(ch === '"'){ inq = !inq; cur += ch; continue; }
-    if(ch === ',' && !inq){ parts.append = null; parts.push(cur); cur=''; continue; }
+  let cur = '';
+  let inq = false;
+  for (let i=0; i<line.length; i++){
+    const ch = line[i];
+    if (ch === '"'){ inq = !inq; cur += ch; continue; }
+    if (ch === ',' && !inq){ out.push(cur); cur=''; continue; }
     cur += ch;
   }
-  parts.push(cur);
-  return parts.map(s=>{
+  out.push(cur);
+  return out.map(s=>{
     s = s.trim();
-    if(s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1).replace(/""/g,'"');
+    if (s.startsWith('"') && s.endsWith('"')) s = s.slice(1,-1).replace(/""/g,'"');
     return s;
   });
 }
 
 function escapeHtml(s){
-  return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'})[m]);
+  return (s||'').replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 }
 
 function registerSW(){
