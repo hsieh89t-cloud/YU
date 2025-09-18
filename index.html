@@ -1,115 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>文章庫 | 總入口</title>
-  <style>
-    body { background:#111; color:#eee; font-family: system-ui, sans-serif; margin:0; padding:0; }
-    header { display:flex; justify-content:space-around; padding:10px; background:#000; }
-    header button { background:none; border:none; color:#eee; font-size:16px; padding:10px; }
-    header button.active { border-bottom:2px solid #0af; }
-    .search { margin:10px; }
-    .search input { width:100%; padding:8px; border-radius:4px; border:none; }
-    .card { background:#222; margin:10px; padding:15px; border-radius:8px; }
-    .card h3 { margin:0 0 5px; }
-    .hidden { display:none; }
-    .back-btn { display:inline-block; margin:10px 0; padding:6px 12px; background:#0af; color:#000; border-radius:5px; cursor:pointer; }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0b0b0e"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <title>黑底PWA｜只讀版</title>
 </head>
 <body>
-  <header>
-    <button id="btn-library">文章庫</button>
-    <button id="btn-files">文件庫</button>
-    <button id="btn-daily">日常</button>
-  </header>
-
-  <div class="search">
-    <input type="text" id="searchBox" placeholder="搜尋標題 / 內容 / 分類（即時）">
+  <div class="header">
+    <div class="tabbar">
+      <button class="tab active" data-tab="library">文章庫</button>
+      <button class="tab" data-tab="work">文件庫</button>
+      <button class="tab" data-tab="board">日常</button>
+    </div>
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="搜尋標題 / 內容 / 分類（即時）">
+    </div>
   </div>
 
-  <div id="list"></div>
-  <div id="detail" class="hidden"></div>
+  <div class="container">
+    <div id="list" class="list"></div>
+    <div id="reader" class="reader hidden"></div>
+  </div>
+
+  <div class="footerpad"></div>
 
   <script>
-    const sources = {
-      library: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRtFcnN6Sx_TfSZUOd-z4pJAsdUH9Iwif5O0g511UlRdSj-k3pVMoQJHtYLQhcxOJkpS-BZu0PrI755/pub?output=csv",
-      work: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTRLAWjFV-pv0-Ek3rsR6ITrYwLERjn6gDJES1VfevOZijiFkK4QOIw23gpm4gbJgLm1a6jfxpVFw2L/pub?output=csv",
-      board: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5FAscCEiiTPtwoRATyaWkoibduHw-R46MQAemT32oYDB2tp9zzHh3-uErkSt62dqEEwYcFooC3oyg/pub?output=csv"
-    };
-
-    let current = "library";
-    const listDiv = document.getElementById("list");
-    const detailDiv = document.getElementById("detail");
-    const searchBox = document.getElementById("searchBox");
-
-    async function loadData(type){
-      current = type;
-      highlightTab();
-      listDiv.innerHTML = "載入中...";
-      detailDiv.classList.add("hidden");
-      listDiv.classList.remove("hidden");
-
-      const url = sources[type];
-      const res = await fetch(url);
-      const text = await res.text();
-      const rows = text.split("\n").map(r=>r.split(","));
-      const header = rows[0];
-      const data = rows.slice(1);
-
-      renderList(data, header);
-    }
-
-    function renderList(data, header){
-      listDiv.innerHTML = "";
-      data.forEach(row=>{
-        if(row.length < 4) return;
-        const [日期, 分類, 標題, 內容] = row;
-        if(!標題 && !內容) return;
-        const card = document.createElement("div");
-        card.className="card";
-        card.innerHTML = `<h3>${標題||"（無標題）"}</h3>
-                          <small>${日期} ・ #${分類}</small>
-                          <p>${內容.length>40?內容.substring(0,40)+"…":內容}</p>`;
-        card.onclick=()=>showDetail(標題, 日期, 分類, 內容);
-        listDiv.appendChild(card);
-      });
-    }
-
-    function showDetail(title, date, cat, content){
-      listDiv.classList.add("hidden");
-      detailDiv.classList.remove("hidden");
-      detailDiv.innerHTML = `<div class="back-btn" onclick="backList()">返回列表</div>
-                             <h3>${title}</h3>
-                             <small>${date} ・ #${cat}</small>
-                             <p>${content.replace(/\\n/g,"<br>")}</p>`;
-    }
-
-    function backList(){
-      detailDiv.classList.add("hidden");
-      listDiv.classList.remove("hidden");
-    }
-
-    function highlightTab(){
-      document.querySelectorAll("header button").forEach(btn=>btn.classList.remove("active"));
-      document.getElementById("btn-"+current).classList.add("active");
-    }
-
-    // 搜尋
-    searchBox.addEventListener("input", ()=>{
-      const kw = searchBox.value.toLowerCase();
-      document.querySelectorAll(".card").forEach(c=>{
-        c.style.display = c.innerText.toLowerCase().includes(kw) ? "" : "none";
-      });
-    });
-
-    // 預設載入文章庫
-    loadData("library");
-
-    // 綁定按鈕
-    document.getElementById("btn-library").onclick=()=>loadData("library");
-    document.getElementById("btn-files").onclick=()=>loadData("work");
-    document.getElementById("btn-daily").onclick=()=>loadData("board");
+    (function() {
+      const key = 'entry_csv_url';
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQYpmaztvrq3vdo8VeDhyP1yUYtEWjHeZyN9cN-0rg2PvqjdLfLnCQffKWUhja6aXo3OXcSmNoffPxR/pub?gid=0&single=true&output=csv');
+      }
+    })();
   </script>
+  <script src="app.js"></script>
 </body>
 </html>
