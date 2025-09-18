@@ -1,0 +1,38 @@
+
+:root{
+  --bg:#0b0b0e; --fg:#f5f7fa; --muted:#a3acb8; --card:#14161b; --border:#22262d; --accent:#22c1dc;
+}
+*{box-sizing:border-box; max-width:100%;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-size:17px;line-height:1.7;
+  -webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%; overflow-x:hidden; height:100%;}
+a{color:var(--accent); text-decoration:none;}
+.container{width:100%; max-width:720px; margin:0 auto; padding:12px 12px 24px;}
+.header{position:sticky; top:0; z-index:30; background:linear-gradient(180deg, rgba(11,11,14,.98), rgba(11,11,14,.92) 60%, rgba(11,11,14,0)); padding:10px 12px 6px; backdrop-filter: blur(6px);}
+.tabbar{display:flex; gap:8px; margin-bottom:8px;}
+.tab{flex:1; padding:10px 12px; border-radius:999px; background:#111317; color:var(--fg); border:1px solid var(--border); transition:transform .08s ease, filter .08s ease;}
+.tab:active{transform:scale(.98); filter:brightness(1.08);}
+.tab.active{outline:2px solid var(--accent);}
+.searchbar{padding-bottom:6px;}
+.searchbar input[type="search"]{width:100%; padding:12px 14px; border-radius:12px; background:var(--card); border:1px solid var(--border); color:var(--fg); font-size:16px;}
+
+.list{padding-top:8px;}
+.item{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px; margin:10px 0; transition:filter .08s ease;}
+.item:active{filter:brightness(1.06);}
+.item h3{margin:0 0 6px 0; font-size:18px; line-height:1.4;}
+.item .meta{font-size:12px; color:var(--muted);}
+.item .preview{font-size:15px; color:#d7dce3; margin-top:6px;}
+
+.reader{padding:16px;}
+.reader h1{font-size:22px; margin:0 0 6px}
+.reader .meta{font-size:13px; color:var(--muted); margin-bottom:14px}
+.reader .content{white-space:pre-wrap; word-break:break-word; font-size:18px; line-height:1.8}
+.backbar{position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--bg); border-bottom:1px solid var(--border);}
+button.primary, .btn{background:var(--accent); color:#00212a; border:0; padding:10px 14px; border-radius:10px; font-size:16px;}
+.btn.secondary{background:#111317; color:var(--fg); border:1px solid var(--border);}
+
+.notice{font-size:13px; margin-top:8px;}
+.notice.ok{color:#42d392;}
+.notice.err{color:#ff6b6b;}
+.footerpad{height:36px}
+.hidden{display:none;}
+.small{font-size:12px; color:var(--muted);}

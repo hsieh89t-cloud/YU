@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0b0b0e"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <title>黑底PWA｜只讀版</title>
+</head>
+<body>
+  <div class="header">
+    <div class="tabbar">
+      <button class="tab active" data-tab="library">文章庫</button>
+      <button class="tab" data-tab="work">文件庫</button>
+      <button class="tab" data-tab="board">日常</button>
+    </div>
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="搜尋標題 / 內容 / 分類（即時）">
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="list" class="list"></div>
+    <div id="reader" class="reader hidden"></div>
+  </div>
+
+  <div class="footerpad"></div>
+
+  <script>
+    // 將入口表 CSV 預設寫進 localStorage（若尚未設定）
+    (function() {
+      const key = 'entry_csv_url';
+      if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQYpmaztvrq3vdo8VeDhyP1yUYtEWjHeZyN9cN-0rg2PvqjdLfLnCQffKWUhja6aXo3OXcSmNoffPxR/pub?gid=0&single=true&output=csv');
+      }
+    })();
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>
